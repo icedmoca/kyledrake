@@ -15,7 +15,7 @@ function App() {
 	const pointerInteractionMovement = useRef(0);
 	const rotation = useRef(0);
 	// The number of markers we're currently displaying
-	const [counter, setCounter] = useState(0);
+	const [counts, setCounts] = useState({ people: 0, robots: 0 });
 	// A map of marker IDs to their positions
 	// Note that we use a ref because the globe's `onRender` callback
 	// is called on every animation frame, and we don't want to re-render
@@ -41,13 +41,11 @@ function App() {
 					location: [message.position.lat, message.position.lng],
 					size: message.position.id === socket.id ? 0.1 : 0.05,
 				});
-				// Update the counter
-				setCounter((c) => c + 1);
-			} else {
+			} else if (message.type === "remove-marker") {
 				// Remove the marker from our map
 				positions.current.delete(message.id);
-				// Update the counter
-				setCounter((c) => c - 1);
+			} else {
+				setCounts({ people: message.people, robots: message.robots });
 			}
 		},
 	});
@@ -97,9 +95,10 @@ function App() {
 
 	return (
 		<div className="App">
-			{counter !== 0 ? (
+			{counts.people + counts.robots !== 0 ? (
 				<p>
-					<b>{counter}</b> {counter === 1 ? "person" : "people"} connected.
+					<b>{counts.people}</b> {counts.people === 1 ? "person" : "people"} and{" "}
+					<b>{counts.robots}</b> {counts.robots === 1 ? "robot" : "robots"} connected.
 				</p>
 			) : (
 				<p>&nbsp;</p>

@@ -6,7 +6,15 @@ import type { Connection, ConnectionContext } from "partyserver";
 // This is the state that we'll store on each connection
 type ConnectionState = {
 	position: Position;
+	isRobot: boolean;
 };
+
+const robotUserAgentPattern =
+	/bot|crawler|spider|crawling|facebookexternalhit|slurp|duckduckbot|baiduspider|yandex|sogou|exabot|facebot|ia_archiver|curl|wget|python-requests|httpclient/i;
+
+function isRobotRequest(request: Request) {
+	return robotUserAgentPattern.test(request.headers.get("user-agent") ?? "");
+}
 
 export class Globe extends Server {
 	onConnect(conn: Connection<ConnectionState>, ctx: ConnectionContext) {
@@ -28,6 +36,7 @@ export class Globe extends Server {
 		// And save this on the connection's state
 		conn.setState({
 			position,
+			isRobot: isRobotRequest(ctx.request),
 		});
 
 		// Now, let's send the entire state to the new connection

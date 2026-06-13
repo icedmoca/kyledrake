@@ -15,4 +15,9 @@ export type OutgoingMessage =
 	| {
 			type: "remove-marker";
 			id: string;
+	  }
+	| {
+			type: "counts";
+			people: number;
+			robots: number;
 	  };
