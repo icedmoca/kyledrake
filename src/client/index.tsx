@@ -26,6 +26,7 @@ function App() {
 			{
 				location: [number, number];
 				size: number;
+				isRobot: boolean;
 			}
 		>
 	>(new Map());
@@ -49,6 +50,7 @@ function App() {
 				positions.current.set(message.position.id, {
 					location: [message.position.lat, message.position.lng],
 					size: message.position.id === socket.id ? 0.1 : 0.05,
+					isRobot: message.position.isRobot,
 				});
 			} else if (message.type === "remove-marker") {
 				// Remove the marker from our map
@@ -56,6 +58,21 @@ function App() {
 			} else {
 				setCounts({ people: message.people, robots: message.robots });
 			}
+
+			const nextCounts = [...positions.current.values()].reduce(
+				(acc, position) => {
+					if (position.isRobot) {
+						acc.robots += 1;
+					} else {
+						acc.people += 1;
+					}
+
+					return acc;
+				},
+				{ people: 0, robots: 0 },
+			);
+
+			setCounts(nextCounts);
 		},
 	});
 

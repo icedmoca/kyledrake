@@ -32,11 +32,12 @@ export class Globe extends Server {
 			lat: parseFloat(latitude),
 			lng: parseFloat(longitude),
 			id: conn.id,
+			isRobot: isRobotRequest(ctx.request),
 		};
 		// And save this on the connection's state
 		conn.setState({
 			position,
-			isRobot: isRobotRequest(ctx.request),
+			isRobot: position.isRobot,
 		});
 
 		// Now, let's send the entire state to the new connection

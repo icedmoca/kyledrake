@@ -5,6 +5,7 @@ export type Position = {
 	lat: number;
 	lng: number;
 	id: string;
+	isRobot: boolean;
 };
 
 export type OutgoingMessage =
