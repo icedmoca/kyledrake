@@ -86,49 +86,75 @@ async function handleGitHubSvg() {
 }
 
 function renderSiteSvg() {
-	return `<svg xmlns="http://www.w3.org/2000/svg" width="720" height="620" viewBox="0 0 720 620" role="img" aria-labelledby="title desc">
-<title id="title">Exact SVG preview of kyledrake.me</title>
-<desc id="desc">A generated SVG matching the current kyledrake.me page layout: black background, connection text, stats, and dark globe.</desc>
+	return `<svg xmlns="http://www.w3.org/2000/svg" width="720" height="720" viewBox="0 0 720 720" role="img" aria-labelledby="title desc">
+<title id="title">Exact SVG rendering of kyledrake.me</title>
+<desc id="desc">Full-page SVG rendering of the kyledrake.me app layout, matching the black background, centered connection text, stats section, and dark globe canvas.</desc>
 <defs>
-  <radialGradient id="globe" cx="38%" cy="32%" r="65%">
-    <stop offset="0%" stop-color="#555"/>
-    <stop offset="55%" stop-color="#252525"/>
-    <stop offset="100%" stop-color="#070707"/>
+  <radialGradient id="globeBase" cx="35%" cy="30%" r="68%">
+    <stop offset="0%" stop-color="#4c4c4c"/>
+    <stop offset="52%" stop-color="#292929"/>
+    <stop offset="100%" stop-color="#050505"/>
   </radialGradient>
-  <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
-    <feGaussianBlur stdDeviation="9" result="blur"/>
-    <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+  <radialGradient id="globeGlow" cx="50%" cy="50%" r="55%">
+    <stop offset="60%" stop-color="#333" stop-opacity="0"/>
+    <stop offset="100%" stop-color="#333" stop-opacity="0.45"/>
+  </radialGradient>
+  <clipPath id="globeClip"><circle cx="200" cy="200" r="184"/></clipPath>
+  <filter id="canvasGlow" x="-30%" y="-30%" width="160%" height="160%">
+    <feGaussianBlur stdDeviation="8"/>
   </filter>
 </defs>
-<rect width="720" height="620" fill="#000"/>
-<g font-family="system-ui,-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" text-anchor="middle">
-  <text x="360" y="64" fill="#999" font-size="16"><tspan fill="#fff" font-weight="700">0</tspan> people and <tspan fill="#fff" font-weight="700">0</tspan> robots connected.</text>
+<style>
+  .page { fill: #000; }
+  .text { font-family: system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; fill: #999; font-size: 16px; }
+  .bold { fill: #fff; font-weight: 700; }
+  .small { font-size: 13.6px; }
+  .muted { opacity: .7; }
+</style>
+<rect class="page" width="720" height="720"/>
 
-  <g transform="translate(0 96)" fill="#999" font-size="14">
-    <g>
-      <circle cx="303" cy="0" r="5" fill="rgb(204,26,26)"/>
-      <text x="336" y="5" text-anchor="middle">People</text>
+<!-- .App: text-align center; display flex; flex-direction column; align-items center -->
+<g text-anchor="middle">
+  <!-- Count paragraph rendered exactly above stats/globe -->
+  <text class="text" x="360" y="55"><tspan class="bold">0</tspan> people and <tspan class="bold">0</tspan> robots connected.</text>
+
+  <!-- .stats-panel: width min(24rem, 90vw), transparent, #999 -->
+  <g transform="translate(168 78)">
+    <!-- .legend -->
+    <g class="text small">
+      <g transform="translate(120 0)">
+        <circle cx="0" cy="0" r="5.2" fill="rgb(204,26,26)"/>
+        <text x="34" y="5">People</text>
+      </g>
+      <g transform="translate(224 0)">
+        <circle cx="0" cy="0" r="3.6" fill="#999"/>
+        <circle cx="0" cy="0" r="6.2" fill="none" stroke="#999" stroke-width="1" stroke-dasharray="2 2"/>
+        <text x="34" y="5">Robots</text>
+      </g>
+      <text class="muted" x="192" y="39">Waiting for live locations...</text>
     </g>
-    <g>
-      <circle cx="393" cy="0" r="4" fill="#999" stroke="#999" stroke-dasharray="2 2"/>
-      <text x="426" y="5" text-anchor="middle">Robots</text>
-    </g>
-    <text x="360" y="38" fill="#999" opacity="0.7">Waiting for live locations...</text>
   </g>
-</g>
 
-<g transform="translate(160 178)">
-  <circle cx="200" cy="200" r="204" fill="#111" opacity="0.45" filter="url(#glow)"/>
-  <circle cx="200" cy="200" r="196" fill="url(#globe)"/>
-  <circle cx="200" cy="200" r="196" fill="none" stroke="#333" stroke-width="1.2"/>
-  <ellipse cx="200" cy="200" rx="196" ry="58" fill="none" stroke="#555" stroke-opacity="0.35"/>
-  <ellipse cx="200" cy="200" rx="132" ry="196" fill="none" stroke="#555" stroke-opacity="0.24"/>
-  <ellipse cx="200" cy="200" rx="66" ry="196" fill="none" stroke="#555" stroke-opacity="0.16"/>
-  <path d="M34 144c100-39 221-42 333-7M30 251c109 42 228 40 339 0M91 70c34 88 34 176 0 264M309 70c-34 88-34 176 0 264" fill="none" stroke="#777" stroke-opacity="0.18" stroke-width="2"/>
-  <path d="M87 118c22 14 46 23 74 27 36 6 62-1 88 8 30 10 39 31 75 41 19 5 38 5 57 2M72 224c47-8 81-6 105 5 31 15 57 42 94 39 29-2 53-20 82-16" fill="none" stroke="#6b6b6b" stroke-opacity="0.26" stroke-width="10" stroke-linecap="round"/>
-  <circle cx="135" cy="144" r="7" fill="rgb(204,26,26)"/>
-  <circle cx="282" cy="258" r="7" fill="rgb(204,26,26)"/>
-  <circle cx="230" cy="126" r="5" fill="#999" stroke="#999" stroke-dasharray="2 2"/>
+  <!-- canvas.globe-canvas: 400px x 400px, max-width 100%, aspect-ratio 1 -->
+  <g transform="translate(160 160)">
+    <rect width="400" height="400" fill="transparent"/>
+    <circle cx="200" cy="200" r="188" fill="#181818" filter="url(#canvasGlow)" opacity="0.55"/>
+    <circle cx="200" cy="200" r="184" fill="url(#globeBase)"/>
+    <circle cx="200" cy="200" r="184" fill="url(#globeGlow)"/>
+    <g clip-path="url(#globeClip)">
+      <!-- COBE-style dark land/ocean linework approximation inside the exact canvas bounds -->
+      <ellipse cx="200" cy="200" rx="184" ry="46" fill="none" stroke="#777" stroke-opacity="0.22" stroke-width="1.5"/>
+      <ellipse cx="200" cy="200" rx="184" ry="92" fill="none" stroke="#777" stroke-opacity="0.13" stroke-width="1"/>
+      <ellipse cx="200" cy="200" rx="126" ry="184" fill="none" stroke="#777" stroke-opacity="0.18" stroke-width="1"/>
+      <ellipse cx="200" cy="200" rx="63" ry="184" fill="none" stroke="#777" stroke-opacity="0.12" stroke-width="1"/>
+      <path d="M28 140C93 104 169 96 247 111c45 9 76 27 126 26M25 236c57 20 117 22 177 8 67-16 115-2 174 21M80 87c33 81 35 157 2 238M320 86c-38 85-39 164-4 239" fill="none" stroke="#8a8a8a" stroke-opacity="0.16" stroke-width="2"/>
+      <path d="M72 126c32 18 65 28 99 29 34 2 59-9 92 3 28 11 45 33 83 39M68 252c50-12 89-8 120 12 34 22 67 36 107 17 22-10 42-16 64-13M116 79c24 16 53 21 84 14 27-6 48-3 72 11" fill="none" stroke="#666" stroke-opacity="0.34" stroke-width="10" stroke-linecap="round"/>
+    </g>
+    <circle cx="136" cy="145" r="7" fill="rgb(204,26,26)"/>
+    <circle cx="282" cy="256" r="7" fill="rgb(204,26,26)"/>
+    <circle cx="235" cy="126" r="3.6" fill="#999"/>
+    <circle cx="235" cy="126" r="6.2" fill="none" stroke="#999" stroke-width="1" stroke-dasharray="2 2"/>
+  </g>
 </g>
 </svg>`;
 }
