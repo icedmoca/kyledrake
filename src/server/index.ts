@@ -9,6 +9,13 @@ type ConnectionState = {
 	isRobot: boolean;
 };
 
+type LiveSiteStats = {
+	people: number;
+	robots: number;
+	locations: Array<{ name: string; count: number }>;
+	markers: Array<{ lat: number; lng: number; isRobot: boolean }>;
+};
+
 const robotUserAgentPattern =
 	/bot|crawler|spider|crawling|facebookexternalhit|slurp|duckduckbot|baiduspider|yandex|sogou|exabot|facebot|ia_archiver|curl|wget|python-requests|httpclient/i;
 
@@ -85,7 +92,38 @@ async function handleGitHubSvg() {
 	return new Response(renderGitHubSvg(repo), { headers: githubSvgHeaders });
 }
 
-function renderSiteSvg() {
+
+function projectMarker(lat: number, lng: number) {
+	const radius = 184;
+	const lambda = ((lng + 20) * Math.PI) / 180;
+	const phi = (lat * Math.PI) / 180;
+	const x = 200 + radius * Math.cos(phi) * Math.sin(lambda);
+	const y = 200 - radius * Math.sin(phi);
+	const visible = Math.cos(phi) * Math.cos(lambda) > -0.12;
+
+	return { x: Math.round(x), y: Math.round(y), visible };
+}
+
+function renderSiteSvg(stats: LiveSiteStats) {
+	const markerDots = stats.markers
+		.map((marker) => ({ ...marker, ...projectMarker(marker.lat, marker.lng) }))
+		.filter((marker) => marker.visible)
+		.map((marker) =>
+			marker.isRobot
+				? `<circle cx="${marker.x}" cy="${marker.y}" r="3.6" fill="#999"/><circle cx="${marker.x}" cy="${marker.y}" r="6.2" fill="none" stroke="#999" stroke-width="1" stroke-dasharray="2 2"/>`
+				: `<circle cx="${marker.x}" cy="${marker.y}" r="7" fill="rgb(204,26,26)"/>`,
+		)
+		.join("");
+
+	const locationRows = stats.locations.length
+		? stats.locations
+				.map(
+					(location, index) =>
+						`<text class="small" x="64" y="${39 + index * 24}" text-anchor="start">${escapeXml(location.name)}</text><text class="small bold" x="320" y="${39 + index * 24}" text-anchor="end">${location.count}</text>`,
+				)
+				.join("")
+		: `<text class="muted small" x="192" y="39">Waiting for live locations...</text>`;
+
 	return `<svg xmlns="http://www.w3.org/2000/svg" width="720" height="720" viewBox="0 0 720 720" role="img" aria-labelledby="title desc">
 <title id="title">Exact SVG rendering of kyledrake.me</title>
 <desc id="desc">Full-page SVG rendering of the kyledrake.me app layout, matching the black background, centered connection text, stats section, and dark globe canvas.</desc>
@@ -150,19 +188,82 @@ function renderSiteSvg() {
       <path d="M28 140C93 104 169 96 247 111c45 9 76 27 126 26M25 236c57 20 117 22 177 8 67-16 115-2 174 21M80 87c33 81 35 157 2 238M320 86c-38 85-39 164-4 239" fill="none" stroke="#8a8a8a" stroke-opacity="0.16" stroke-width="2"/>
       <path d="M72 126c32 18 65 28 99 29 34 2 59-9 92 3 28 11 45 33 83 39M68 252c50-12 89-8 120 12 34 22 67 36 107 17 22-10 42-16 64-13M116 79c24 16 53 21 84 14 27-6 48-3 72 11" fill="none" stroke="#666" stroke-opacity="0.34" stroke-width="10" stroke-linecap="round"/>
     </g>
-    <circle cx="136" cy="145" r="7" fill="rgb(204,26,26)"/>
-    <circle cx="282" cy="256" r="7" fill="rgb(204,26,26)"/>
-    <circle cx="235" cy="126" r="3.6" fill="#999"/>
-    <circle cx="235" cy="126" r="6.2" fill="none" stroke="#999" stroke-width="1" stroke-dasharray="2 2"/>
+${markerDots}
   </g>
 </g>
 </svg>`;
 }
-function handleSiteSvg() {
-	return new Response(renderSiteSvg(), { headers: githubSvgHeaders });
+async function getLiveSiteStats(request: Request, env: Env): Promise<LiveSiteStats> {
+	try {
+		const statsUrl = new URL("/parties/globe/default/stats", request.url);
+		const response = await routePartykitRequest(new Request(statsUrl), { ...env });
+
+		if (response?.ok) {
+			return (await response.json()) as LiveSiteStats;
+		}
+	} catch {
+		// Fall through to empty stats if the globe room is unavailable.
+	}
+
+	return { people: 0, robots: 0, locations: [], markers: [] };
+}
+
+async function handleSiteSvg(request: Request, env: Env) {
+	return new Response(renderSiteSvg(await getLiveSiteStats(request, env)), {
+		headers: githubSvgHeaders,
+	});
 }
 
 export class Globe extends Server {
+	connections = new Map<string, ConnectionState>();
+
+	getLiveStats(): LiveSiteStats {
+		const stats: LiveSiteStats = { people: 0, robots: 0, locations: [], markers: [] };
+		const locations = new Map<string, number>();
+
+		for (const state of this.connections.values()) {
+			stats.markers.push({
+				lat: state.position.lat,
+				lng: state.position.lng,
+				isRobot: state.isRobot,
+			});
+
+			if (state.isRobot) {
+				stats.robots += 1;
+			} else {
+				stats.people += 1;
+			}
+
+			const locationName =
+				state.position.region === "Unknown"
+					? state.position.country
+					: `${state.position.region}, ${state.position.country}`;
+
+			locations.set(locationName, (locations.get(locationName) ?? 0) + 1);
+		}
+
+		stats.locations = [...locations.entries()]
+			.sort((a, b) => b[1] - a[1])
+			.slice(0, 3)
+			.map(([name, count]) => ({ name, count }));
+
+		return stats;
+	}
+
+	onRequest(request: Request) {
+		const url = new URL(request.url);
+
+		if (url.pathname.endsWith("/stats")) {
+			return Response.json(this.getLiveStats(), {
+				headers: {
+					"cache-control": "no-store, no-cache, must-revalidate, max-age=0",
+				},
+			});
+		}
+
+		return new Response("Not found", { status: 404 });
+	}
+
 	onConnect(conn: Connection<ConnectionState>, ctx: ConnectionContext) {
 		// Whenever a fresh connection is made, we'll
 		// send the entire state to the new connection
@@ -186,6 +287,10 @@ export class Globe extends Server {
 		};
 		// And save this on the connection's state
 		conn.setState({
+			position,
+			isRobot: position.isRobot,
+		});
+		this.connections.set(conn.id, {
 			position,
 			isRobot: position.isRobot,
 		});
@@ -219,6 +324,8 @@ export class Globe extends Server {
 	// Whenever a connection closes (or errors), we'll broadcast a message to all
 	// other connections to remove the marker.
 	onCloseOrError(connection: Connection) {
+		this.connections.delete(connection.id);
+
 		this.broadcast(
 			JSON.stringify({
 				type: "remove-marker",
@@ -246,7 +353,7 @@ export default {
 		}
 
 		if (url.pathname === "/site.svg") {
-			return handleSiteSvg();
+			return handleSiteSvg(request, env);
 		}
 
 		return (
