@@ -2,6 +2,8 @@
 
 [![Live GitHub card powered by kyledrake.me](https://kyledrake.me/github.svg)](https://kyledrake.me)
 
+[![Live preview of kyledrake.me](https://kyledrake.me/site.svg)](https://kyledrake.me)
+
 This repo powers the live globe at [kyledrake.me](https://kyledrake.me), including a dynamic SVG endpoint for GitHub profile README embeds.
 
 ## Live GitHub Profile README Integration
@@ -10,9 +12,11 @@ Use this in a GitHub profile README to render the live card directly from the Cl
 
 ```md
 [![Live GitHub card powered by kyledrake.me](https://kyledrake.me/github.svg)](https://kyledrake.me)
+
+[![Live preview of kyledrake.me](https://kyledrake.me/site.svg)](https://kyledrake.me)
 ```
 
-The SVG is generated at request time by `kyledrake.me/github.svg` with no-cache headers so GitHub receives fresh repo data whenever it refreshes the image.
+The SVGs are generated at request time by `kyledrake.me/github.svg` and `kyledrake.me/site.svg` with no-cache headers so GitHub receives fresh images whenever it refreshes them.
 
 ## Development
 
