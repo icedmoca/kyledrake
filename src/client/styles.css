@@ -87,12 +87,8 @@ a {
 .stats-panel {
 	width: min(24rem, 90vw);
 	margin: 0 auto 0.5rem;
-	padding: 0.75rem 1rem;
-	border: 1px solid rgba(0, 0, 0, 0.08);
-	border-radius: 1rem;
-	background: rgba(255, 255, 255, 0.72);
-	backdrop-filter: blur(10px);
-	box-shadow: 0 0.75rem 2.5rem rgba(0, 0, 0, 0.08);
+	padding: 0.25rem 1rem 0.75rem;
+	color: #999;
 }
 
 .legend {
@@ -119,8 +115,8 @@ a {
 .legend-dot.robot {
 	width: 0.45rem;
 	height: 0.45rem;
-	background: rgb(61, 110, 220);
-	outline: 1px dashed rgb(61, 110, 220);
+	background: #999;
+	outline: 1px dashed #999;
 	outline-offset: 2px;
 }
 

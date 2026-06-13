@@ -139,13 +139,13 @@ function App() {
 			height: width * 2,
 			phi: 0,
 			theta: 0.2,
-			dark: 0,
-			diffuse: 1.2,
+			dark: 1,
+			diffuse: 0.8,
 			mapSamples: 16000,
 			mapBrightness: 6,
-			baseColor: [1, 1, 1],
+			baseColor: [0.3, 0.3, 0.3],
 			markerColor: [0.8, 0.1, 0.1],
-			glowColor: [1, 1, 1],
+			glowColor: [0.2, 0.2, 0.2],
 			markers: [],
 			onRender: (state) => {
 				// Called on every animation frame.
