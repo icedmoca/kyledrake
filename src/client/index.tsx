@@ -34,7 +34,16 @@ function App() {
 		room: "default",
 		party: "globe",
 		onMessage(evt) {
-			const message = JSON.parse(evt.data as string) as OutgoingMessage;
+			const rawMessage = evt.data as string;
+
+			// Older deployments sent just the total connection count as a string.
+			// Keep supporting that shape so the UI never goes blank during deploys.
+			if (/^\d+$/.test(rawMessage)) {
+				setCounts({ people: Number(rawMessage), robots: 0 });
+				return;
+			}
+
+			const message = JSON.parse(rawMessage) as OutgoingMessage;
 			if (message.type === "add-marker") {
 				// Add the marker to our map
 				positions.current.set(message.position.id, {
@@ -95,14 +104,10 @@ function App() {
 
 	return (
 		<div className="App">
-			{counts.people + counts.robots !== 0 ? (
-				<p>
-					<b>{counts.people}</b> {counts.people === 1 ? "person" : "people"} and{" "}
-					<b>{counts.robots}</b> {counts.robots === 1 ? "robot" : "robots"} connected.
-				</p>
-			) : (
-				<p>&nbsp;</p>
-			)}
+			<p>
+				<b>{counts.people}</b> {counts.people === 1 ? "person" : "people"} and{" "}
+				<b>{counts.robots}</b> {counts.robots === 1 ? "robot" : "robots"} connected.
+			</p>
 
 			{/* The canvas where we'll render the globe */}
 			<canvas
