@@ -86,57 +86,52 @@ async function handleGitHubSvg() {
 }
 
 function renderSiteSvg() {
-	const generatedAt = new Intl.DateTimeFormat("en", {
-		month: "short",
-		day: "numeric",
-		hour: "numeric",
-		minute: "2-digit",
-		timeZoneName: "short",
-	}).format(new Date());
-
-	return `<svg xmlns="http://www.w3.org/2000/svg" width="720" height="420" viewBox="0 0 720 420" role="img" aria-labelledby="title desc">
-<title id="title">Live preview of kyledrake.me</title>
-<desc id="desc">A generated SVG preview of the live multiplayer globe site.</desc>
+	return `<svg xmlns="http://www.w3.org/2000/svg" width="720" height="620" viewBox="0 0 720 620" role="img" aria-labelledby="title desc">
+<title id="title">Exact SVG preview of kyledrake.me</title>
+<desc id="desc">A generated SVG matching the current kyledrake.me page layout: black background, connection text, stats, and dark globe.</desc>
 <defs>
-  <radialGradient id="space" cx="50%" cy="45%" r="70%"><stop offset="0%" stop-color="#111827"/><stop offset="70%" stop-color="#050608"/><stop offset="100%" stop-color="#000"/></radialGradient>
-  <radialGradient id="globe" cx="38%" cy="32%" r="62%"><stop offset="0%" stop-color="#5b6472"/><stop offset="55%" stop-color="#24272d"/><stop offset="100%" stop-color="#08090b"/></radialGradient>
-  <linearGradient id="panel" x1="0" x2="1"><stop offset="0%" stop-color="#101216"/><stop offset="100%" stop-color="#171a20"/></linearGradient>
-  <filter id="softGlow" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="12" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-  <pattern id="grid" width="28" height="28" patternUnits="userSpaceOnUse"><path d="M28 0H0V28" fill="none" stroke="#30363d" stroke-opacity="0.22"/></pattern>
+  <radialGradient id="globe" cx="38%" cy="32%" r="65%">
+    <stop offset="0%" stop-color="#555"/>
+    <stop offset="55%" stop-color="#252525"/>
+    <stop offset="100%" stop-color="#070707"/>
+  </radialGradient>
+  <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+    <feGaussianBlur stdDeviation="9" result="blur"/>
+    <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+  </filter>
 </defs>
-<rect width="720" height="420" fill="url(#space)"/>
-<rect width="720" height="420" fill="url(#grid)" opacity="0.28"/>
-<text x="36" y="48" fill="#8b949e" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" letter-spacing="2">LIVE SITE PREVIEW</text>
-<text x="36" y="84" fill="#f0f6fc" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="34" font-weight="800">kyledrake.me</text>
-<text x="36" y="112" fill="#c9d1d9" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="16">Interactive multiplayer globe with live visitors, robots, and locations.</text>
-<g transform="translate(420 72)">
-  <rect width="230" height="108" rx="20" fill="url(#panel)" stroke="#30363d"/>
-  <text x="22" y="35" fill="#f0f6fc" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" font-weight="700">Live features</text>
-  <text x="22" y="62" fill="#8b949e" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13">• Mobile drag + hold globe</text>
-  <text x="22" y="84" fill="#8b949e" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13">• People vs robot counts</text>
-  <text x="22" y="106" fill="#8b949e" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13">• Top live locations</text>
+<rect width="720" height="620" fill="#000"/>
+<g font-family="system-ui,-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif" text-anchor="middle">
+  <text x="360" y="64" fill="#999" font-size="16"><tspan fill="#fff" font-weight="700">0</tspan> people and <tspan fill="#fff" font-weight="700">0</tspan> robots connected.</text>
+
+  <g transform="translate(0 96)" fill="#999" font-size="14">
+    <g>
+      <circle cx="303" cy="0" r="5" fill="rgb(204,26,26)"/>
+      <text x="336" y="5" text-anchor="middle">People</text>
+    </g>
+    <g>
+      <circle cx="393" cy="0" r="4" fill="#999" stroke="#999" stroke-dasharray="2 2"/>
+      <text x="426" y="5" text-anchor="middle">Robots</text>
+    </g>
+    <text x="360" y="38" fill="#999" opacity="0.7">Waiting for live locations...</text>
+  </g>
 </g>
-<g transform="translate(64 132)">
-  <circle cx="230" cy="145" r="118" fill="#0d1117" filter="url(#softGlow)" opacity="0.85"/>
-  <circle cx="230" cy="145" r="112" fill="url(#globe)" stroke="#3b4048" stroke-width="2"/>
-  <ellipse cx="230" cy="145" rx="112" ry="36" fill="none" stroke="#6b7280" stroke-opacity="0.35"/>
-  <ellipse cx="230" cy="145" rx="74" ry="112" fill="none" stroke="#6b7280" stroke-opacity="0.26"/>
-  <path d="M125 125c54-28 128-31 210-4M127 166c62 26 131 24 207 1M164 66c20 49 22 106 2 161M292 67c-24 54-25 110-2 160" fill="none" stroke="#8b949e" stroke-opacity="0.2" stroke-width="2"/>
-  <circle cx="174" cy="101" r="6" fill="#f85149"><animate attributeName="r" values="5;8;5" dur="2.4s" repeatCount="indefinite"/></circle>
-  <circle cx="282" cy="178" r="6" fill="#f85149"><animate attributeName="r" values="5;8;5" dur="2.1s" repeatCount="indefinite"/></circle>
-  <circle cx="244" cy="86" r="4" fill="#8b949e" stroke="#8b949e" stroke-dasharray="2 2"/>
-  <circle cx="324" cy="133" r="4" fill="#8b949e" stroke="#8b949e" stroke-dasharray="2 2"/>
+
+<g transform="translate(160 178)">
+  <circle cx="200" cy="200" r="204" fill="#111" opacity="0.45" filter="url(#glow)"/>
+  <circle cx="200" cy="200" r="196" fill="url(#globe)"/>
+  <circle cx="200" cy="200" r="196" fill="none" stroke="#333" stroke-width="1.2"/>
+  <ellipse cx="200" cy="200" rx="196" ry="58" fill="none" stroke="#555" stroke-opacity="0.35"/>
+  <ellipse cx="200" cy="200" rx="132" ry="196" fill="none" stroke="#555" stroke-opacity="0.24"/>
+  <ellipse cx="200" cy="200" rx="66" ry="196" fill="none" stroke="#555" stroke-opacity="0.16"/>
+  <path d="M34 144c100-39 221-42 333-7M30 251c109 42 228 40 339 0M91 70c34 88 34 176 0 264M309 70c-34 88-34 176 0 264" fill="none" stroke="#777" stroke-opacity="0.18" stroke-width="2"/>
+  <path d="M87 118c22 14 46 23 74 27 36 6 62-1 88 8 30 10 39 31 75 41 19 5 38 5 57 2M72 224c47-8 81-6 105 5 31 15 57 42 94 39 29-2 53-20 82-16" fill="none" stroke="#6b6b6b" stroke-opacity="0.26" stroke-width="10" stroke-linecap="round"/>
+  <circle cx="135" cy="144" r="7" fill="rgb(204,26,26)"/>
+  <circle cx="282" cy="258" r="7" fill="rgb(204,26,26)"/>
+  <circle cx="230" cy="126" r="5" fill="#999" stroke="#999" stroke-dasharray="2 2"/>
 </g>
-<g transform="translate(420 210)">
-  <rect width="230" height="112" rx="20" fill="#0d1117" stroke="#30363d"/>
-  <text x="22" y="34" fill="#f0f6fc" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" font-weight="700">What the site shows</text>
-  <circle cx="28" cy="62" r="5" fill="#f85149"/><text x="42" y="67" fill="#c9d1d9" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13">People markers</text>
-  <circle cx="28" cy="88" r="4" fill="#8b949e" stroke="#8b949e" stroke-dasharray="2 2"/><text x="42" y="93" fill="#c9d1d9" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13">Robot markers</text>
-</g>
-<text x="36" y="392" fill="#8b949e" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13">Generated live by kyledrake.me/site.svg • ${escapeXml(generatedAt)}</text>
 </svg>`;
 }
-
 function handleSiteSvg() {
 	return new Response(renderSiteSvg(), { headers: githubSvgHeaders });
 }
