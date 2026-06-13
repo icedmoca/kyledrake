@@ -3,10 +3,56 @@ import "./styles.css";
 import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import createGlobe from "cobe";
-import usePartySocket from "partysocket/react";
-
-// The type of messages we'll be receiving from the server
+import { usePartySocket } from "partysocket/react";
 import type { OutgoingMessage } from "../shared";
+
+type Marker = {
+	location: [number, number];
+	size: number;
+	isRobot: boolean;
+	name: string;
+};
+
+type ConnectionStats = {
+	people: number;
+	robots: number;
+	locations: Array<{ name: string; count: number }>;
+};
+
+type Pulse = {
+	id: number;
+	isRobot: boolean;
+};
+
+function getConnectionStats(markers: Map<string, Marker>): ConnectionStats {
+	const stats: ConnectionStats = { people: 0, robots: 0, locations: [] };
+	const locations = new Map<string, number>();
+
+	for (const marker of markers.values()) {
+		if (marker.isRobot) {
+			stats.robots += 1;
+		} else {
+			stats.people += 1;
+		}
+
+		locations.set(marker.name, (locations.get(marker.name) ?? 0) + 1);
+	}
+
+	stats.locations = [...locations.entries()]
+		.sort((a, b) => b[1] - a[1])
+		.slice(0, 3)
+		.map(([name, count]) => ({ name, count }));
+
+	return stats;
+}
+
+function getLocationName(position: { country: string; region: string }) {
+	if (position.region === "Unknown") {
+		return position.country;
+	}
+
+	return `${position.region}, ${position.country}`;
+}
 
 function App() {
 	// A reference to the canvas element where we'll render the globe
@@ -16,21 +62,12 @@ function App() {
 	const rotation = useRef(0);
 	// The number of markers we're currently displaying
 	const [counts, setCounts] = useState({ people: 0, robots: 0 });
+	const [topLocations, setTopLocations] = useState<ConnectionStats["locations"]>([]);
+	const [pulses, setPulses] = useState<Pulse[]>([]);
+
 	// A map of marker IDs to their positions
-	// Note that we use a ref because the globe's `onRender` callback
-	// is called on every animation frame, and we don't want to re-render
-	// the component on every frame.
-	const positions = useRef<
-		Map<
-			string,
-			{
-				location: [number, number];
-				size: number;
-				isRobot: boolean;
-			}
-		>
-	>(new Map());
-	// Connect to the PartyServer server
+	const positions = useRef<Map<string, Marker>>(new Map());
+
 	const socket = usePartySocket({
 		room: "default",
 		party: "globe",
@@ -45,65 +82,73 @@ function App() {
 			}
 
 			const message = JSON.parse(rawMessage) as OutgoingMessage;
+			let shouldPulse = false;
+			let pulseIsRobot = false;
+
 			if (message.type === "add-marker") {
-				// Add the marker to our map
+				shouldPulse = !positions.current.has(message.position.id);
+				pulseIsRobot = message.position.isRobot;
+
+				// Add the marker to our map. Robots are intentionally smaller so they
+				// are visually distinct from people on the globe.
 				positions.current.set(message.position.id, {
 					location: [message.position.lat, message.position.lng],
-					size: message.position.id === socket.id ? 0.1 : 0.05,
+					size: message.position.id === socket.id ? 0.1 : message.position.isRobot ? 0.035 : 0.055,
 					isRobot: message.position.isRobot,
+					name: getLocationName(message.position),
 				});
 			} else if (message.type === "remove-marker") {
 				// Remove the marker from our map
 				positions.current.delete(message.id);
 			} else {
 				setCounts({ people: message.people, robots: message.robots });
+				return;
 			}
 
-			const nextCounts = [...positions.current.values()].reduce(
-				(acc, position) => {
-					if (position.isRobot) {
-						acc.robots += 1;
-					} else {
-						acc.people += 1;
-					}
+			const nextStats = getConnectionStats(positions.current);
 
-					return acc;
-				},
-				{ people: 0, robots: 0 },
-			);
+			setCounts({ people: nextStats.people, robots: nextStats.robots });
+			setTopLocations(nextStats.locations);
 
-			setCounts(nextCounts);
+			if (shouldPulse) {
+				const id = Date.now() + Math.random();
+				setPulses((current) => [...current, { id, isRobot: pulseIsRobot }]);
+				setTimeout(() => {
+					setPulses((current) => current.filter((pulse) => pulse.id !== id));
+				}, 1800);
+			}
 		},
 	});
 
+	// Globe width
 	useEffect(() => {
-		if (!canvasRef.current) return;
+		let width = 0;
 
-		// The angle of rotation of the globe
-		// We'll update this on every frame to make the globe spin
-		let phi = 0;
+		const onResize = () => {
+			if (canvasRef.current) {
+				width = canvasRef.current.offsetWidth;
+			}
+		};
 
-		const globe = createGlobe(canvasRef.current, {
+		window.addEventListener("resize", onResize);
+		onResize();
+
+		const globe = createGlobe(canvasRef.current!, {
 			devicePixelRatio: 2,
-			width: 400 * 2,
-			height: 400 * 2,
+			width: width * 2,
+			height: width * 2,
 			phi: 0,
-			theta: 0,
-			dark: 1,
-			diffuse: 0.8,
+			theta: 0.2,
+			dark: 0,
+			diffuse: 1.2,
 			mapSamples: 16000,
 			mapBrightness: 6,
-			baseColor: [0.3, 0.3, 0.3],
+			baseColor: [1, 1, 1],
 			markerColor: [0.8, 0.1, 0.1],
-			glowColor: [0.2, 0.2, 0.2],
+			glowColor: [1, 1, 1],
 			markers: [],
-			opacity: 0.7,
 			onRender: (state) => {
 				// Called on every animation frame.
-				// `state` will be an empty object, return updated params.
-
-				// Get the current positions from our map
-				state.markers = [...positions.current.values()];
 
 				// Rotate the globe automatically unless the user is holding it.
 				if (pointerInteracting.current === null) {
@@ -111,22 +156,61 @@ function App() {
 				}
 
 				state.phi = rotation.current + pointerInteractionMovement.current;
+
+				// Update the globe size
+				state.width = width * 2;
+				state.height = width * 2;
+				// Update the markers
+				state.markers = [...positions.current.values()];
 			},
 		});
 
 		return () => {
 			globe.destroy();
+			window.removeEventListener("resize", onResize);
 		};
 	}, []);
 
 	return (
 		<div className="App">
+			<div className="pulse-overlay" aria-hidden="true">
+				{pulses.map((pulse) => (
+					<span
+						key={pulse.id}
+						className={`connection-pulse ${pulse.isRobot ? "robot" : "person"}`}
+					/>
+				))}
+			</div>
+
 			<p>
 				<b>{counts.people}</b> {counts.people === 1 ? "person" : "people"} and{" "}
 				<b>{counts.robots}</b> {counts.robots === 1 ? "robot" : "robots"} connected.
 			</p>
 
-			{/* The canvas where we'll render the globe */}
+			<div className="stats-panel">
+				<div className="legend" aria-label="Globe marker legend">
+					<span>
+						<i className="legend-dot person" /> People
+					</span>
+					<span>
+						<i className="legend-dot robot" /> Robots
+					</span>
+				</div>
+
+				{topLocations.length > 0 ? (
+					<ol className="locations" aria-label="Top connected locations">
+						{topLocations.map((location) => (
+							<li key={location.name}>
+								<span>{location.name}</span>
+								<b>{location.count}</b>
+							</li>
+						))}
+					</ol>
+				) : (
+					<p className="waiting-copy">Waiting for live locations...</p>
+				)}
+			</div>
+
 			<canvas
 				ref={canvasRef}
 				className="globe-canvas"
