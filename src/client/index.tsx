@@ -11,6 +11,9 @@ import type { OutgoingMessage } from "../shared";
 function App() {
 	// A reference to the canvas element where we'll render the globe
 	const canvasRef = useRef<HTMLCanvasElement>(null);
+	const pointerInteracting = useRef<number | null>(null);
+	const pointerInteractionMovement = useRef(0);
+	const rotation = useRef(0);
 	// The number of markers we're currently displaying
 	const [counter, setCounter] = useState(0);
 	// A map of marker IDs to their positions
@@ -78,9 +81,12 @@ function App() {
 				// Get the current positions from our map
 				state.markers = [...positions.current.values()];
 
-				// Rotate the globe
-				state.phi = phi;
-				phi += 0.01;
+				// Rotate the globe automatically unless the user is holding it.
+				if (pointerInteracting.current === null) {
+					rotation.current += 0.01;
+				}
+
+				state.phi = rotation.current + pointerInteractionMovement.current;
 			},
 		});
 
@@ -103,7 +109,31 @@ function App() {
 			{/* The canvas where we'll render the globe */}
 			<canvas
 				ref={canvasRef}
+				className="globe-canvas"
 				style={{ width: 400, height: 400, maxWidth: "100%", aspectRatio: 1 }}
+				onPointerDown={(event) => {
+					pointerInteracting.current = event.clientX;
+					event.currentTarget.setPointerCapture(event.pointerId);
+				}}
+				onPointerMove={(event) => {
+					if (pointerInteracting.current !== null) {
+						pointerInteractionMovement.current =
+							(event.clientX - pointerInteracting.current) / 100;
+					}
+				}}
+				onPointerUp={(event) => {
+					rotation.current += pointerInteractionMovement.current;
+					pointerInteractionMovement.current = 0;
+					pointerInteracting.current = null;
+					if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+						event.currentTarget.releasePointerCapture(event.pointerId);
+					}
+				}}
+				onPointerCancel={() => {
+					rotation.current += pointerInteractionMovement.current;
+					pointerInteractionMovement.current = 0;
+					pointerInteracting.current = null;
+				}}
 			/>
 
 			{/* Let's give some credit */}

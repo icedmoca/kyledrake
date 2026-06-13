@@ -48,3 +48,14 @@ a {
 	text-underline-offset: 3px;
 	text-decoration-color: #555;
 }
+
+
+.globe-canvas {
+	cursor: grab;
+	touch-action: none;
+	user-select: none;
+}
+
+.globe-canvas:active {
+	cursor: grabbing;
+}
