@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+	<title>Smiling face favicon</title>
+	<defs>
+		<radialGradient id="face" cx="38" cy="30" r="92" gradientUnits="userSpaceOnUse">
+			<stop offset="0" stop-color="#fff176" />
+			<stop offset="0.55" stop-color="#ffd54f" />
+			<stop offset="1" stop-color="#ffb300" />
+		</radialGradient>
+		<radialGradient id="shine" cx="38" cy="28" r="52" gradientUnits="userSpaceOnUse">
+			<stop offset="0" stop-color="#ffffff" stop-opacity="0.75" />
+			<stop offset="1" stop-color="#ffffff" stop-opacity="0" />
+		</radialGradient>
+	</defs>
+	<circle cx="64" cy="64" r="58" fill="url(#face)" />
+	<circle cx="64" cy="64" r="58" fill="url(#shine)" />
+	<ellipse cx="42" cy="52" rx="8" ry="11" fill="#5d4037" />
+	<ellipse cx="86" cy="52" rx="8" ry="11" fill="#5d4037" />
+	<path d="M36 76c7 18 22 28 28 28s21-10 28-28" fill="none" stroke="#5d4037" stroke-width="8" stroke-linecap="round" />
+</svg>
