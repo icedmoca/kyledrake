@@ -91,6 +91,10 @@ a {
 	color: #999;
 }
 
+.connected-count-one {
+	color: #22c55e;
+}
+
 .legend {
 	display: flex;
 	justify-content: center;

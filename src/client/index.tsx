@@ -183,7 +183,7 @@ function App() {
 			</div>
 
 			<p>
-				<b>{counts.people}</b> {counts.people === 1 ? "person" : "people"} and{" "}
+				<b className={counts.people === 1 ? "connected-count-one" : undefined}>{counts.people}</b> {counts.people === 1 ? "person" : "people"} and{" "}
 				<b>{counts.robots}</b> {counts.robots === 1 ? "robot" : "robots"} connected.
 			</p>
 
