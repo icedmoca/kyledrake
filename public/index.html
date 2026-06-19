@@ -4,7 +4,7 @@
 		<meta charset="utf-8" />
 		<meta
 			name="viewport"
-			content="width=device-width, initial-scale=1.0, shrink-to-fit=no"
+			content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no, viewport-fit=cover"
 		/>
 		<meta http-equiv="X-UA-Compatible" content="IE=edge" />
 		<title>Nyan Cat Run</title>
@@ -17,6 +17,13 @@
 			content="A Nyan Cat jumping game in the style of the Chrome dino runner, with the original Nyan Cat music."
 		/>
 		<meta name="author" content="kyledrake.me" />
+		<!-- Mobile web-app -->
+		<meta name="mobile-web-app-capable" content="yes" />
+		<meta name="apple-mobile-web-app-capable" content="yes" />
+		<meta
+			name="apple-mobile-web-app-status-bar-style"
+			content="black-translucent"
+		/>
 		<!-- Theme Colour -->
 		<meta name="theme-color" content="#0b0224" />
 
@@ -31,6 +38,7 @@
 			body {
 				margin: 0;
 				height: 100%;
+				overscroll-behavior: none;
 			}
 			body {
 				display: flex;
@@ -61,11 +69,12 @@
 				position: relative;
 				width: min(900px, 96vw);
 				max-width: 900px;
+				height: min(58vh, 380px);
 			}
 			canvas {
 				display: block;
 				width: 100%;
-				height: auto;
+				height: 100%;
 				border-radius: 14px;
 				border: 3px solid #ff4fd8;
 				box-shadow:
@@ -73,19 +82,19 @@
 					0 0 30px rgba(255, 79, 216, 0.5);
 				image-rendering: pixelated;
 				background: #0b0224;
-				touch-action: manipulation;
+				touch-action: none;
 			}
 			#sound {
 				position: absolute;
 				top: 12px;
 				left: 12px;
-				width: 40px;
-				height: 40px;
+				width: 44px;
+				height: 44px;
 				border-radius: 10px;
 				border: 2px solid #ff4fd8;
 				background: rgba(13, 4, 36, 0.85);
 				color: #fff;
-				font-size: 18px;
+				font-size: 20px;
 				cursor: pointer;
 				display: flex;
 				align-items: center;
@@ -108,13 +117,42 @@
 				padding: 2px 7px;
 				font-size: 12px;
 			}
+
+			/* Full-screen on phones / small screens */
+			@media (max-width: 820px), (pointer: coarse) {
+				body {
+					padding: 0;
+					gap: 0;
+					justify-content: flex-start;
+				}
+				h1,
+				.hint {
+					display: none;
+				}
+				#stage {
+					width: 100vw;
+					width: 100dvw;
+					height: 100vh;
+					height: 100dvh;
+					max-width: none;
+				}
+				canvas {
+					border: 0;
+					border-radius: 0;
+					box-shadow: none;
+				}
+				#sound {
+					top: max(12px, env(safe-area-inset-top));
+					left: max(12px, env(safe-area-inset-left));
+				}
+			}
 		</style>
 	</head>
 	<body>
 		<h1>🌈 NYAN CAT RUN 🐱</h1>
 		<div id="stage">
 			<button id="sound" type="button" title="Toggle music" aria-label="Toggle music">🔊</button>
-			<canvas id="game" width="900" height="320"></canvas>
+			<canvas id="game"></canvas>
 		</div>
 		<p class="hint">
 			Press <kbd>Space</kbd> / <kbd>↑</kbd> or tap to jump &middot; jump the
@@ -132,9 +170,6 @@
 				const ctx = canvas.getContext("2d");
 				const bgm = document.getElementById("bgm");
 				const soundBtn = document.getElementById("sound");
-				const W = canvas.width;
-				const H = canvas.height;
-				ctx.imageSmoothingEnabled = false;
 
 				// ---------- Official Nyan Cat sprite sheet ----------
 				// 6 frames of the original animation, each 34x21 px, laid out
@@ -148,53 +183,85 @@
 				const FW = 34;
 				const FH = 21;
 				const NFRAMES = 6;
-				const SCALE = 3;
-				const SPR_W = FW * SCALE; // 102
-				const SPR_H = FH * SCALE; // 63
 
 				// ---------- Game state ----------
 				const STATE = { READY: 0, RUNNING: 1, OVER: 2 };
 				let state = STATE.READY;
-				const baseSpeed = 5.2;
-				let speed = baseSpeed;
 				let score = 0;
 				let best = Number(localStorage.getItem("nyan-best") || 0);
 				let frame = 0;
 
-				const GROUND = H - 56; // y where the cat's feet rest
-				const cat = {
-					x: 70,
-					w: SPR_W,
-					h: SPR_H,
-					y: GROUND - SPR_H,
-					vy: 0,
-					onGround: true,
-				};
-				const GRAVITY = 0.62;
-				const JUMP_V = -12.6;
+				// Layout-dependent values (recomputed on resize)
+				let W = 900,
+					H = 320,
+					SCALE = 3,
+					U = 1,
+					SPR_W = FW * 3,
+					SPR_H = FH * 3,
+					GROUND = 260,
+					baseSpeed = 5.2,
+					GRAVITY = 0.62,
+					JUMP_V = -12.6;
+				let speed = baseSpeed;
 
+				const cat = { x: 70, w: SPR_W, h: SPR_H, y: 0, vy: 0, onGround: true };
 				let obstacles = [];
 				let spawnIn = 50;
-
-				const stars = [];
-				for (let i = 0; i < 70; i++) {
-					stars.push({
-						x: Math.random() * W,
-						y: Math.random() * (GROUND - 30),
-						r: Math.random() * 1.8 + 0.4,
-						s: Math.random() * 0.6 + 0.2,
-					});
-				}
+				let stars = [];
 				const trail = [];
+
+				function makeStars() {
+					stars = [];
+					const n = Math.max(40, Math.min(140, Math.round((W * H) / 9000)));
+					for (let i = 0; i < n; i++) {
+						stars.push({
+							x: Math.random() * W,
+							y: Math.random() * (GROUND - 20),
+							r: Math.random() * 1.8 + 0.4,
+							s: Math.random() * 0.6 + 0.2,
+						});
+					}
+				}
+
+				function layout() {
+					const dpr = Math.min(window.devicePixelRatio || 1, 2);
+					const cssW = Math.round(canvas.clientWidth || W);
+					const cssH = Math.round(canvas.clientHeight || H);
+					W = cssW;
+					H = cssH;
+					canvas.width = Math.round(cssW * dpr);
+					canvas.height = Math.round(cssH * dpr);
+					ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+					ctx.imageSmoothingEnabled = false;
+
+					// World scale so the cat / physics feel the same at any size
+					SCALE = Math.max(2, Math.min(5, Math.round((H * 0.18) / FH)));
+					U = SCALE / 3;
+					SPR_W = FW * SCALE;
+					SPR_H = FH * SCALE;
+					cat.w = SPR_W;
+					cat.h = SPR_H;
+					GROUND = H - Math.max(40, Math.round(H * 0.16));
+					baseSpeed = 5.2 * U;
+					GRAVITY = 0.62 * U;
+					JUMP_V = -12.6 * U;
+					speed = baseSpeed + score * 0.02 * U;
+					cat.x = Math.max(24, Math.round(W * 0.08));
+					if (state !== STATE.RUNNING || cat.onGround) {
+						cat.y = GROUND - SPR_H;
+					}
+					makeStars();
+				}
 
 				function reset() {
 					state = STATE.RUNNING;
-					speed = baseSpeed;
 					score = 0;
 					frame = 0;
 					obstacles = [];
 					spawnIn = 50;
 					trail.length = 0;
+					layout();
+					speed = baseSpeed;
 					cat.y = GROUND - SPR_H;
 					cat.vy = 0;
 					cat.onGround = true;
@@ -256,11 +323,18 @@
 					{ passive: false },
 				);
 
+				window.addEventListener("resize", layout);
+				window.addEventListener("orientationchange", layout);
+				if (window.visualViewport) {
+					window.visualViewport.addEventListener("resize", layout);
+				}
+
 				// ---------- Spawning ----------
 				function spawn() {
 					const tall = Math.random() < 0.4;
-					const w = 20 + Math.random() * 16;
-					const h = tall ? 48 + Math.random() * 26 : 24 + Math.random() * 14;
+					const w = (20 + Math.random() * 16) * U;
+					const h =
+						(tall ? 48 + Math.random() * 26 : 24 + Math.random() * 14) * U;
 					obstacles.push({ x: W + 20, w, h });
 				}
 
@@ -272,8 +346,8 @@
 				// ---------- Update ----------
 				function update() {
 					frame++;
-					score += speed * 0.02;
-					speed = baseSpeed + score * 0.02;
+					score += (speed / U) * 0.02;
+					speed = baseSpeed + score * 0.02 * U;
 
 					cat.vy += GRAVITY;
 					cat.y += cat.vy;
@@ -284,9 +358,9 @@
 					}
 
 					// rainbow trail emitted from behind the pop-tart
-					trail.push({ x: cat.x + 10, y: cat.y + SPR_H * 0.42, frame });
+					trail.push({ x: cat.x + 3 * SCALE, y: cat.y + SPR_H * 0.42, frame });
 					for (const t of trail) t.x -= speed;
-					while (trail.length && trail[0].x < -24) trail.shift();
+					while (trail.length && trail[0].x < -30) trail.shift();
 
 					spawnIn--;
 					if (spawnIn <= 0) {
@@ -298,10 +372,10 @@
 					obstacles = obstacles.filter((o) => o.x + o.w > -10);
 
 					// collision against the cat's solid core (pop-tart + head)
-					const cx = cat.x + 24;
-					const cy = cat.y + 9;
-					const cw = SPR_W - 36;
-					const ch = SPR_H - 27;
+					const cx = cat.x + 8 * SCALE;
+					const cy = cat.y + 3 * SCALE;
+					const cw = (FW - 12) * SCALE;
+					const ch = (FH - 9) * SCALE;
 					for (const o of obstacles) {
 						const oy = GROUND - o.h;
 						if (
@@ -331,7 +405,7 @@
 							s.x -= s.s * (speed * 0.4);
 							if (s.x < 0) {
 								s.x = W;
-								s.y = Math.random() * (GROUND - 30);
+								s.y = Math.random() * (GROUND - 20);
 							}
 						}
 						ctx.globalAlpha = 0.6 + Math.sin((frame + s.x) * 0.05) * 0.3;
@@ -342,8 +416,8 @@
 					ctx.strokeStyle = "#ff4fd8";
 					ctx.lineWidth = 2;
 					ctx.beginPath();
-					ctx.moveTo(0, GROUND);
-					ctx.lineTo(W, GROUND);
+					ctx.moveTo(0, GROUND + 1);
+					ctx.lineTo(W, GROUND + 1);
 					ctx.stroke();
 				}
 
@@ -356,7 +430,7 @@
 						"#3399ff",
 						"#9b59ff",
 					];
-					const band = 4;
+					const band = Math.max(3, Math.round(4 * U));
 					for (const t of trail) {
 						const segW = speed + 2;
 						const zig = (Math.floor(t.frame / 6) % 2) * band;
@@ -372,8 +446,8 @@
 					for (const o of obstacles) {
 						const oy = GROUND - o.h;
 						px(o.x, oy, o.w, o.h, "#28104f");
-						px(o.x, oy, o.w, 4, "#7a3cff");
-						px(o.x + o.w / 2 - 2, oy + 6, 4, o.h - 10, "#a06bff");
+						px(o.x, oy, o.w, 4 * U, "#7a3cff");
+						px(o.x + o.w / 2 - 2 * U, oy + 6 * U, 4 * U, o.h - 10 * U, "#a06bff");
 					}
 				}
 
@@ -383,49 +457,45 @@
 					if (spriteReady) {
 						const fi =
 							state === STATE.RUNNING ? Math.floor(frame / 4) % NFRAMES : 0;
-						ctx.drawImage(
-							sprite,
-							fi * FW,
-							0,
-							FW,
-							FH,
-							x,
-							y,
-							SPR_W,
-							SPR_H,
-						);
+						ctx.drawImage(sprite, fi * FW, 0, FW, FH, x, y, SPR_W, SPR_H);
 					} else {
-						// fallback block until the sprite loads
 						px(x + 12, y + 12, SPR_W - 24, SPR_H - 24, "#fca6d1");
 					}
 				}
 
 				function drawHud() {
-					ctx.fillStyle = "#fff";
-					ctx.font = "16px 'Courier New', monospace";
+					const f = Math.max(14, Math.min(22, Math.round(H * 0.05)));
+					ctx.font = f + "px 'Courier New', monospace";
 					ctx.textAlign = "right";
+					ctx.fillStyle = "#fff";
 					ctx.fillText(
 						"SCORE " + String(Math.floor(score)).padStart(5, "0"),
 						W - 16,
-						28,
+						f + 10,
 					);
 					ctx.fillStyle = "#ffd54f";
-					ctx.fillText("BEST " + String(best).padStart(5, "0"), W - 16, 50);
+					ctx.fillText(
+						"BEST " + String(best).padStart(5, "0"),
+						W - 16,
+						f * 2 + 16,
+					);
 					ctx.textAlign = "left";
 				}
 
 				function drawCenterText(lines) {
+					const big = Math.max(22, Math.min(38, Math.round(H * 0.08)));
+					const small = Math.max(14, Math.min(20, Math.round(H * 0.045)));
 					ctx.save();
 					ctx.fillStyle = "rgba(7,2,23,0.72)";
 					ctx.fillRect(0, 0, W, H);
 					ctx.textAlign = "center";
 					ctx.fillStyle = "#fff";
-					ctx.font = "26px 'Courier New', monospace";
-					ctx.fillText(lines[0], W / 2, H / 2 - 18);
-					ctx.font = "16px 'Courier New', monospace";
+					ctx.font = big + "px 'Courier New', monospace";
+					ctx.fillText(lines[0], W / 2, H / 2 - big * 0.6);
+					ctx.font = small + "px 'Courier New', monospace";
 					ctx.fillStyle = "#ffd54f";
 					for (let i = 1; i < lines.length; i++) {
-						ctx.fillText(lines[i], W / 2, H / 2 + 14 + (i - 1) * 26);
+						ctx.fillText(lines[i], W / 2, H / 2 + (i - 1) * (small + 12) + small);
 					}
 					ctx.restore();
 					ctx.textAlign = "left";
@@ -456,6 +526,8 @@
 					requestAnimationFrame(loop);
 				}
 
+				layout();
+				cat.y = GROUND - SPR_H;
 				loop();
 			})();
 		</script>
