@@ -14,7 +14,7 @@
 		<meta name="title" content="Nyan Cat Run" />
 		<meta
 			name="description"
-			content="A Nyan Cat jumping game in the style of the Chrome dino runner."
+			content="A Nyan Cat jumping game in the style of the Chrome dino runner, with the original Nyan Cat music."
 		/>
 		<meta name="author" content="kyledrake.me" />
 		<!-- Theme Colour -->
@@ -43,7 +43,7 @@
 					radial-gradient(circle at 20% 20%, #2a0a4f 0%, transparent 55%),
 					radial-gradient(circle at 80% 30%, #0a2a5f 0%, transparent 55%),
 					#070217;
-				font-family: "Press Start 2P", "Courier New", monospace;
+				font-family: "Courier New", monospace;
 				color: #fff;
 				overflow: hidden;
 				padding: 16px;
@@ -75,6 +75,26 @@
 				background: #0b0224;
 				touch-action: manipulation;
 			}
+			#sound {
+				position: absolute;
+				top: 12px;
+				left: 12px;
+				width: 40px;
+				height: 40px;
+				border-radius: 10px;
+				border: 2px solid #ff4fd8;
+				background: rgba(13, 4, 36, 0.85);
+				color: #fff;
+				font-size: 18px;
+				cursor: pointer;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				z-index: 2;
+			}
+			#sound:hover {
+				background: #2a0a4f;
+			}
 			.hint {
 				font-family: "Courier New", monospace;
 				font-size: 14px;
@@ -93,6 +113,7 @@
 	<body>
 		<h1>🌈 NYAN CAT RUN 🐱</h1>
 		<div id="stage">
+			<button id="sound" type="button" title="Toggle music" aria-label="Toggle music">🔊</button>
 			<canvas id="game" width="900" height="320"></canvas>
 		</div>
 		<p class="hint">
@@ -100,50 +121,120 @@
 			obstacles, ride the rainbow
 		</p>
 
+		<audio id="bgm" loop preload="auto">
+			<source src="/nyan.mp3" type="audio/mpeg" />
+			<source src="/nyan.ogg" type="audio/ogg" />
+		</audio>
+
 		<script>
 			(function () {
 				const canvas = document.getElementById("game");
 				const ctx = canvas.getContext("2d");
+				const bgm = document.getElementById("bgm");
+				const soundBtn = document.getElementById("sound");
 				const W = canvas.width;
 				const H = canvas.height;
-				const GROUND_Y = H - 56;
+				ctx.imageSmoothingEnabled = false;
 
-				// ----- Game state -----
+				// ---------- Nyan Cat pixel art ----------
+				const PAL = {
+					".": null,
+					b: "#2b2b2b",
+					g: "#9e9e9e",
+					l: "#d0d0d0",
+					t: "#f7ce8a",
+					p: "#fca6d1",
+					d: "#f97cb5",
+					r: "#ff7aa2",
+					w: "#ffffff",
+					k: "#141414",
+					n: "#5a5a5a",
+				};
+				const FRAME_A = [
+					".........................bb...bb...",
+					".........bbbbbbbbbbbbb...bggb.bggb..",
+					"........btttttttttttttb.bbggbbggbb..",
+					".......btpppppppppppptbbbggggggggbb.",
+					"...bb..btpdpppdpppdppptbgggggggggggb",
+					"..bggb.btpppppppppppptbgwkggggwkgggb",
+					"..bggbbbtpdpppdpppdppptbgwkggggwkgggb",
+					"...bbbbbtpppppppppppptbggggggnggggggb",
+					"......b.btpdpppdpppdppptbgrggbbggrggb",
+					".......b.btppppppppppptbbggbgggbggggb",
+					"........bbbbbbbbbbbbbbb.bgggbbbggggb.",
+					".........bg.bg.bg.bg.b..bbgggggggbb..",
+					".........bb.bb.bb.bb.b....bbbbbbb....",
+				];
+				const FRAME_B = [
+					"...bb....................bb...bb...",
+					"..bggb...bbbbbbbbbbbbb...bggb.bggb..",
+					"..bggbbbbtttttttttttttb.bbggbbggbb..",
+					"...bbbbbbtpppppppppppptbbbggggggggbb.",
+					"......b.btpdpppdpppdppptbgggggggggggb",
+					".......b.tpppppppppppptbgwkggggwkgggb",
+					"........btpdpppdpppdppptbgwkggggwkgggb",
+					"........btpppppppppppptbggggggnggggggb",
+					"........btpdpppdpppdppptbgrggbbggrggb",
+					"........btppppppppppptbbggbgggbggggb.",
+					"........bbbbbbbbbbbbbbb.bgggbbbggggb.",
+					".........b.bg.bg.bg.bgb.bbgggggggbb..",
+					".........b.bb.bb.bb.bbb...bbbbbbb....",
+				];
+				const SPR_COLS = 38;
+				const SPR_ROWS = 13;
+				const CELL = 3;
+				const SPR_W = SPR_COLS * CELL; // 114
+				const SPR_H = SPR_ROWS * CELL; // 39
+				function pad(rows) {
+					return rows.map((r) => r.padEnd(SPR_COLS, "."));
+				}
+				const FRAMES = [pad(FRAME_A), pad(FRAME_B)];
+
+				function drawSprite(rows, ox, oy) {
+					for (let y = 0; y < rows.length; y++) {
+						const row = rows[y];
+						for (let x = 0; x < row.length; x++) {
+							const c = PAL[row[x]];
+							if (!c) continue;
+							ctx.fillStyle = c;
+							ctx.fillRect(ox + x * CELL, oy + y * CELL, CELL, CELL);
+						}
+					}
+				}
+
+				// ---------- Game state ----------
 				const STATE = { READY: 0, RUNNING: 1, OVER: 2 };
 				let state = STATE.READY;
-				let speed = 5.2;
 				const baseSpeed = 5.2;
+				let speed = baseSpeed;
 				let score = 0;
 				let best = Number(localStorage.getItem("nyan-best") || 0);
 				let frame = 0;
 
-				// ----- Nyan cat -----
+				const GROUND = H - 60; // y where the cat's feet rest
 				const cat = {
-					x: 90,
-					y: GROUND_Y,
-					w: 68,
-					h: 42,
+					x: 70,
+					w: SPR_W,
+					h: SPR_H,
+					y: GROUND - SPR_H,
 					vy: 0,
 					onGround: true,
 				};
 				const GRAVITY = 0.62;
-				const JUMP_V = -12.2;
+				const JUMP_V = -12.4;
 
-				// ----- Obstacles -----
 				let obstacles = [];
-				let spawnIn = 60;
+				let spawnIn = 50;
 
-				// ----- Background -----
 				const stars = [];
 				for (let i = 0; i < 70; i++) {
 					stars.push({
 						x: Math.random() * W,
-						y: Math.random() * (GROUND_Y - 20),
+						y: Math.random() * (GROUND - 30),
 						r: Math.random() * 1.8 + 0.4,
 						s: Math.random() * 0.6 + 0.2,
 					});
 				}
-				// Rainbow trail samples (history of cat's vertical center)
 				const trail = [];
 
 				function reset() {
@@ -154,9 +245,10 @@
 					obstacles = [];
 					spawnIn = 50;
 					trail.length = 0;
-					cat.y = GROUND_Y;
+					cat.y = GROUND - SPR_H;
 					cat.vy = 0;
 					cat.onGround = true;
+					playMusic();
 				}
 
 				function jump() {
@@ -170,7 +262,26 @@
 					}
 				}
 
-				// ----- Input -----
+				// ---------- Music ----------
+				let muted = false;
+				function playMusic() {
+					if (muted) return;
+					bgm.volume = 0.55;
+					const p = bgm.play();
+					if (p && p.catch) p.catch(() => {});
+				}
+				soundBtn.addEventListener("click", (e) => {
+					e.stopPropagation();
+					muted = !muted;
+					soundBtn.textContent = muted ? "🔇" : "🔊";
+					if (muted) {
+						bgm.pause();
+					} else if (state === STATE.RUNNING) {
+						playMusic();
+					}
+				});
+
+				// ---------- Input ----------
 				window.addEventListener("keydown", (e) => {
 					if (
 						e.code === "Space" ||
@@ -195,126 +306,54 @@
 					{ passive: false },
 				);
 
-				// ----- Spawning -----
+				// ---------- Spawning ----------
 				function spawn() {
 					const tall = Math.random() < 0.4;
 					const w = 20 + Math.random() * 16;
-					const h = tall ? 46 + Math.random() * 26 : 24 + Math.random() * 14;
+					const h = tall ? 48 + Math.random() * 26 : 24 + Math.random() * 14;
 					obstacles.push({ x: W + 20, w, h });
 				}
 
-				// ----- Drawing helpers -----
 				function px(x, y, w, h, color) {
 					ctx.fillStyle = color;
 					ctx.fillRect(x, y, w, h);
 				}
 
-				function drawRainbowTrail() {
-					const colors = [
-						"#ff0000",
-						"#ff9900",
-						"#ffff00",
-						"#33cc33",
-						"#3399ff",
-						"#6633ff",
-					];
-					const band = 5;
-					for (let i = 0; i < trail.length; i++) {
-						const t = trail[i];
-						const segW = speed + 2;
-						// zig-zag offset for that classic shimmer
-						const zig = (Math.floor(t.frame / 4) % 2) * band;
-						for (let c = 0; c < colors.length; c++) {
-							ctx.fillStyle = colors[c];
-							ctx.fillRect(
-								t.x,
-								t.y - colors.length * band * 0.5 + c * band + zig - band,
-								segW + 1,
-								band,
-							);
-						}
-					}
-				}
-
-				function drawCat(x, y) {
-					// y is the top of the cat box
-					// Pop-tart body
-					px(x + 8, y + 6, 44, 30, "#fc99cc"); // body pink
-					px(x + 8, y + 6, 44, 4, "#ff66b2");
-					px(x + 8, y + 32, 44, 4, "#e066a0");
-					// sprinkles
-					px(x + 16, y + 14, 4, 4, "#ffffff");
-					px(x + 30, y + 12, 4, 4, "#33ccff");
-					px(x + 40, y + 22, 4, 4, "#ffff66");
-					px(x + 22, y + 24, 4, 4, "#66ff66");
-					px(x + 34, y + 26, 4, 4, "#ffffff");
-					// Cat head (grey)
-					const hx = x + 44;
-					px(hx, y + 2, 24, 30, "#bdbdbd");
-					// ears
-					px(hx + 2, y - 4, 6, 8, "#bdbdbd");
-					px(hx + 16, y - 4, 6, 8, "#bdbdbd");
-					// eyes
-					px(hx + 6, y + 12, 4, 4, "#000");
-					px(hx + 16, y + 12, 4, 4, "#000");
-					// cheeks
-					px(hx + 4, y + 20, 4, 4, "#ff9999");
-					px(hx + 18, y + 20, 4, 4, "#ff9999");
-					// mouth
-					px(hx + 11, y + 18, 2, 6, "#000");
-					px(hx + 9, y + 22, 6, 2, "#000");
-					// whiskers
-					px(hx - 6, y + 16, 6, 2, "#fff");
-					px(hx - 6, y + 22, 6, 2, "#fff");
-					px(hx + 24, y + 16, 6, 2, "#fff");
-					px(hx + 24, y + 22, 6, 2, "#fff");
-					// legs (little paws)
-					const legPhase = Math.floor(frame / 5) % 2;
-					px(x + 12, y + 36, 8, 6, "#9e9e9e");
-					px(x + 32, y + 36, 8, 6, legPhase ? "#9e9e9e" : "#757575");
-				}
-
-				// ----- Main loop -----
+				// ---------- Update ----------
 				function update() {
 					frame++;
 					score += speed * 0.02;
 					speed = baseSpeed + score * 0.02;
 
-					// cat physics
 					cat.vy += GRAVITY;
 					cat.y += cat.vy;
-					if (cat.y >= GROUND_Y) {
-						cat.y = GROUND_Y;
+					if (cat.y >= GROUND - SPR_H) {
+						cat.y = GROUND - SPR_H;
 						cat.vy = 0;
 						cat.onGround = true;
 					}
 
-					// trail
-					trail.push({
-						x: cat.x - 6,
-						y: cat.y + cat.h / 2,
-						frame: frame,
-					});
+					// rainbow trail emitted from behind the pop-tart
+					trail.push({ x: cat.x + 4, y: cat.y + SPR_H * 0.5, frame });
 					for (const t of trail) t.x -= speed;
-					while (trail.length && trail[0].x < -20) trail.shift();
+					while (trail.length && trail[0].x < -24) trail.shift();
 
-					// obstacles
 					spawnIn--;
 					if (spawnIn <= 0) {
 						spawn();
-						const minGap = Math.max(48, 90 - score * 0.15);
+						const minGap = Math.max(46, 88 - score * 0.15);
 						spawnIn = minGap + Math.random() * 50;
 					}
 					for (const o of obstacles) o.x -= speed;
 					obstacles = obstacles.filter((o) => o.x + o.w > -10);
 
-					// collision
-					const cx = cat.x + 8;
-					const cy = cat.y + 6;
-					const cw = cat.w - 12;
-					const ch = cat.h - 8;
+					// collision against the cat's solid core (pop-tart + head)
+					const cx = cat.x + 22;
+					const cy = cat.y + 9;
+					const cw = SPR_W - 40;
+					const ch = SPR_H - 21;
 					for (const o of obstacles) {
-						const oy = GROUND_Y + cat.h - o.h;
+						const oy = GROUND - o.h;
 						if (
 							cx < o.x + o.w &&
 							cx + cw > o.x &&
@@ -328,50 +367,81 @@
 
 				function gameOver() {
 					state = STATE.OVER;
+					bgm.pause();
 					if (score > best) {
 						best = Math.floor(score);
 						localStorage.setItem("nyan-best", String(best));
 					}
 				}
 
+				// ---------- Render ----------
 				function drawBackground() {
-					// stars drift
 					for (const s of stars) {
 						if (state === STATE.RUNNING) {
 							s.x -= s.s * (speed * 0.4);
 							if (s.x < 0) {
 								s.x = W;
-								s.y = Math.random() * (GROUND_Y - 20);
+								s.y = Math.random() * (GROUND - 30);
 							}
 						}
 						ctx.globalAlpha = 0.6 + Math.sin((frame + s.x) * 0.05) * 0.3;
 						px(s.x, s.y, s.r * 2, s.r * 2, "#ffffff");
 					}
 					ctx.globalAlpha = 1;
-					// ground
-					px(0, GROUND_Y + cat.h, W, H - GROUND_Y - cat.h, "#13062e");
+					px(0, GROUND, W, H - GROUND, "#13062e");
 					ctx.strokeStyle = "#ff4fd8";
 					ctx.lineWidth = 2;
 					ctx.beginPath();
-					ctx.moveTo(0, GROUND_Y + cat.h);
-					ctx.lineTo(W, GROUND_Y + cat.h);
+					ctx.moveTo(0, GROUND);
+					ctx.lineTo(W, GROUND);
 					ctx.stroke();
+				}
+
+				function drawRainbowTrail() {
+					const colors = [
+						"#ff1d1d",
+						"#ff9900",
+						"#ffe600",
+						"#33d633",
+						"#3399ff",
+						"#9b59ff",
+					];
+					const band = 4;
+					for (const t of trail) {
+						const segW = speed + 2;
+						const zig = (Math.floor(t.frame / 6) % 2) * band;
+						const top = t.y - (colors.length * band) / 2 + zig - band;
+						for (let c = 0; c < colors.length; c++) {
+							ctx.fillStyle = colors[c];
+							ctx.fillRect(t.x, top + c * band, segW + 1, band);
+						}
+					}
 				}
 
 				function drawObstacles() {
 					for (const o of obstacles) {
-						const oy = GROUND_Y + cat.h - o.h;
+						const oy = GROUND - o.h;
 						px(o.x, oy, o.w, o.h, "#28104f");
 						px(o.x, oy, o.w, 4, "#7a3cff");
 						px(o.x + o.w / 2 - 2, oy + 6, 4, o.h - 10, "#a06bff");
 					}
 				}
 
+				function drawCat() {
+					const running = state === STATE.RUNNING && cat.onGround;
+					const fi = running ? Math.floor(frame / 6) % 2 : 0;
+					drawSprite(FRAMES[fi], Math.round(cat.x), Math.round(cat.y));
+				}
+
 				function drawHud() {
 					ctx.fillStyle = "#fff";
 					ctx.font = "16px 'Courier New', monospace";
 					ctx.textAlign = "right";
-					ctx.fillText("SCORE " + String(Math.floor(score)).padStart(5, "0"), W - 16, 28);
+					ctx.fillText(
+						"SCORE " + String(Math.floor(score)).padStart(5, "0"),
+						W - 16,
+						28,
+					);
 					ctx.fillStyle = "#ffd54f";
 					ctx.fillText("BEST " + String(best).padStart(5, "0"), W - 16, 50);
 					ctx.textAlign = "left";
@@ -399,14 +469,11 @@
 					drawBackground();
 					drawRainbowTrail();
 					drawObstacles();
-					drawCat(cat.x, cat.y);
+					drawCat();
 					drawHud();
 
 					if (state === STATE.READY) {
-						drawCenterText([
-							"NYAN CAT RUN",
-							"Press Space / Tap to start",
-						]);
+						drawCenterText(["NYAN CAT RUN", "Press Space / Tap to start"]);
 					} else if (state === STATE.OVER) {
 						drawCenterText([
 							"GAME OVER",
