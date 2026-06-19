@@ -10,11 +10,14 @@ ride the rainbow, and chase your best score.
 
 - **Space** / **↑** / tap or click to jump
 - Speed ramps up the longer you survive; your best score is saved locally
-- Pixel-art Nyan Cat with the original "Nyan Cat" music — toggle it with the 🔊 button
+- The original Nyan Cat sprite + music — toggle the music with the 🔊 button
 
 The whole game is a self-contained canvas in [`public/index.html`](public/index.html) — no build step required to play.
 
-Music is the original [Nyan Cat track from the Internet Archive](https://archive.org/details/NyanCatoriginal), bundled as `public/nyan.mp3` / `public/nyan.ogg`.
+Assets:
+
+- Sprite: the original 6-frame Nyan Cat animation packed into a sprite sheet at `public/nyan-sprite.png`
+- Music: the original [Nyan Cat track from the Internet Archive](https://archive.org/details/NyanCatoriginal), bundled as `public/nyan.mp3` / `public/nyan.ogg`
 
 ## Live GitHub Profile README Integration
 
