@@ -7,21 +7,423 @@
 			content="width=device-width, initial-scale=1.0, shrink-to-fit=no"
 		/>
 		<meta http-equiv="X-UA-Compatible" content="IE=edge" />
-		<title>Globe</title>
+		<title>Nyan Cat Run</title>
 		<!-- Favicon -->
 		<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
 		<!-- Primary Meta Tags -->
-		<meta name="title" content="PartyServer" />
-		<meta name="description" content="Everything's better with friends!" />
-		<meta name="author" content="PartyServer" />
+		<meta name="title" content="Nyan Cat Run" />
+		<meta
+			name="description"
+			content="A Nyan Cat jumping game in the style of the Chrome dino runner."
+		/>
+		<meta name="author" content="kyledrake.me" />
 		<!-- Theme Colour -->
-		<meta name="theme-color" content="#ffffff" />
+		<meta name="theme-color" content="#0b0224" />
 
-		<link rel="stylesheet" href="/normalize.css" />
-		<link rel="stylesheet" href="/dist/index.css" />
+		<style>
+			:root {
+				color-scheme: dark;
+			}
+			* {
+				box-sizing: border-box;
+			}
+			html,
+			body {
+				margin: 0;
+				height: 100%;
+			}
+			body {
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				justify-content: center;
+				gap: 18px;
+				min-height: 100%;
+				background:
+					radial-gradient(circle at 20% 20%, #2a0a4f 0%, transparent 55%),
+					radial-gradient(circle at 80% 30%, #0a2a5f 0%, transparent 55%),
+					#070217;
+				font-family: "Press Start 2P", "Courier New", monospace;
+				color: #fff;
+				overflow: hidden;
+				padding: 16px;
+			}
+			h1 {
+				margin: 0;
+				font-size: clamp(20px, 4vw, 34px);
+				letter-spacing: 2px;
+				text-shadow:
+					0 0 8px #ff3,
+					0 0 18px #f0f,
+					3px 3px 0 #000;
+			}
+			#stage {
+				position: relative;
+				width: min(900px, 96vw);
+				max-width: 900px;
+			}
+			canvas {
+				display: block;
+				width: 100%;
+				height: auto;
+				border-radius: 14px;
+				border: 3px solid #ff4fd8;
+				box-shadow:
+					0 0 0 3px #0b0224,
+					0 0 30px rgba(255, 79, 216, 0.5);
+				image-rendering: pixelated;
+				background: #0b0224;
+				touch-action: manipulation;
+			}
+			.hint {
+				font-family: "Courier New", monospace;
+				font-size: 14px;
+				opacity: 0.8;
+				text-align: center;
+			}
+			.hint kbd {
+				background: #1d0a3f;
+				border: 1px solid #ff4fd8;
+				border-radius: 5px;
+				padding: 2px 7px;
+				font-size: 12px;
+			}
+		</style>
 	</head>
 	<body>
-		<div id="root">Loading...</div>
-		<script type="module" src="/dist/index.js"></script>
+		<h1>🌈 NYAN CAT RUN 🐱</h1>
+		<div id="stage">
+			<canvas id="game" width="900" height="320"></canvas>
+		</div>
+		<p class="hint">
+			Press <kbd>Space</kbd> / <kbd>↑</kbd> or tap to jump &middot; jump the
+			obstacles, ride the rainbow
+		</p>
+
+		<script>
+			(function () {
+				const canvas = document.getElementById("game");
+				const ctx = canvas.getContext("2d");
+				const W = canvas.width;
+				const H = canvas.height;
+				const GROUND_Y = H - 56;
+
+				// ----- Game state -----
+				const STATE = { READY: 0, RUNNING: 1, OVER: 2 };
+				let state = STATE.READY;
+				let speed = 5.2;
+				const baseSpeed = 5.2;
+				let score = 0;
+				let best = Number(localStorage.getItem("nyan-best") || 0);
+				let frame = 0;
+
+				// ----- Nyan cat -----
+				const cat = {
+					x: 90,
+					y: GROUND_Y,
+					w: 68,
+					h: 42,
+					vy: 0,
+					onGround: true,
+				};
+				const GRAVITY = 0.62;
+				const JUMP_V = -12.2;
+
+				// ----- Obstacles -----
+				let obstacles = [];
+				let spawnIn = 60;
+
+				// ----- Background -----
+				const stars = [];
+				for (let i = 0; i < 70; i++) {
+					stars.push({
+						x: Math.random() * W,
+						y: Math.random() * (GROUND_Y - 20),
+						r: Math.random() * 1.8 + 0.4,
+						s: Math.random() * 0.6 + 0.2,
+					});
+				}
+				// Rainbow trail samples (history of cat's vertical center)
+				const trail = [];
+
+				function reset() {
+					state = STATE.RUNNING;
+					speed = baseSpeed;
+					score = 0;
+					frame = 0;
+					obstacles = [];
+					spawnIn = 50;
+					trail.length = 0;
+					cat.y = GROUND_Y;
+					cat.vy = 0;
+					cat.onGround = true;
+				}
+
+				function jump() {
+					if (state === STATE.RUNNING) {
+						if (cat.onGround) {
+							cat.vy = JUMP_V;
+							cat.onGround = false;
+						}
+					} else {
+						reset();
+					}
+				}
+
+				// ----- Input -----
+				window.addEventListener("keydown", (e) => {
+					if (
+						e.code === "Space" ||
+						e.code === "ArrowUp" ||
+						e.key === " " ||
+						e.key === "ArrowUp"
+					) {
+						e.preventDefault();
+						jump();
+					}
+				});
+				canvas.addEventListener("mousedown", (e) => {
+					e.preventDefault();
+					jump();
+				});
+				canvas.addEventListener(
+					"touchstart",
+					(e) => {
+						e.preventDefault();
+						jump();
+					},
+					{ passive: false },
+				);
+
+				// ----- Spawning -----
+				function spawn() {
+					const tall = Math.random() < 0.4;
+					const w = 20 + Math.random() * 16;
+					const h = tall ? 46 + Math.random() * 26 : 24 + Math.random() * 14;
+					obstacles.push({ x: W + 20, w, h });
+				}
+
+				// ----- Drawing helpers -----
+				function px(x, y, w, h, color) {
+					ctx.fillStyle = color;
+					ctx.fillRect(x, y, w, h);
+				}
+
+				function drawRainbowTrail() {
+					const colors = [
+						"#ff0000",
+						"#ff9900",
+						"#ffff00",
+						"#33cc33",
+						"#3399ff",
+						"#6633ff",
+					];
+					const band = 5;
+					for (let i = 0; i < trail.length; i++) {
+						const t = trail[i];
+						const segW = speed + 2;
+						// zig-zag offset for that classic shimmer
+						const zig = (Math.floor(t.frame / 4) % 2) * band;
+						for (let c = 0; c < colors.length; c++) {
+							ctx.fillStyle = colors[c];
+							ctx.fillRect(
+								t.x,
+								t.y - colors.length * band * 0.5 + c * band + zig - band,
+								segW + 1,
+								band,
+							);
+						}
+					}
+				}
+
+				function drawCat(x, y) {
+					// y is the top of the cat box
+					// Pop-tart body
+					px(x + 8, y + 6, 44, 30, "#fc99cc"); // body pink
+					px(x + 8, y + 6, 44, 4, "#ff66b2");
+					px(x + 8, y + 32, 44, 4, "#e066a0");
+					// sprinkles
+					px(x + 16, y + 14, 4, 4, "#ffffff");
+					px(x + 30, y + 12, 4, 4, "#33ccff");
+					px(x + 40, y + 22, 4, 4, "#ffff66");
+					px(x + 22, y + 24, 4, 4, "#66ff66");
+					px(x + 34, y + 26, 4, 4, "#ffffff");
+					// Cat head (grey)
+					const hx = x + 44;
+					px(hx, y + 2, 24, 30, "#bdbdbd");
+					// ears
+					px(hx + 2, y - 4, 6, 8, "#bdbdbd");
+					px(hx + 16, y - 4, 6, 8, "#bdbdbd");
+					// eyes
+					px(hx + 6, y + 12, 4, 4, "#000");
+					px(hx + 16, y + 12, 4, 4, "#000");
+					// cheeks
+					px(hx + 4, y + 20, 4, 4, "#ff9999");
+					px(hx + 18, y + 20, 4, 4, "#ff9999");
+					// mouth
+					px(hx + 11, y + 18, 2, 6, "#000");
+					px(hx + 9, y + 22, 6, 2, "#000");
+					// whiskers
+					px(hx - 6, y + 16, 6, 2, "#fff");
+					px(hx - 6, y + 22, 6, 2, "#fff");
+					px(hx + 24, y + 16, 6, 2, "#fff");
+					px(hx + 24, y + 22, 6, 2, "#fff");
+					// legs (little paws)
+					const legPhase = Math.floor(frame / 5) % 2;
+					px(x + 12, y + 36, 8, 6, "#9e9e9e");
+					px(x + 32, y + 36, 8, 6, legPhase ? "#9e9e9e" : "#757575");
+				}
+
+				// ----- Main loop -----
+				function update() {
+					frame++;
+					score += speed * 0.02;
+					speed = baseSpeed + score * 0.02;
+
+					// cat physics
+					cat.vy += GRAVITY;
+					cat.y += cat.vy;
+					if (cat.y >= GROUND_Y) {
+						cat.y = GROUND_Y;
+						cat.vy = 0;
+						cat.onGround = true;
+					}
+
+					// trail
+					trail.push({
+						x: cat.x - 6,
+						y: cat.y + cat.h / 2,
+						frame: frame,
+					});
+					for (const t of trail) t.x -= speed;
+					while (trail.length && trail[0].x < -20) trail.shift();
+
+					// obstacles
+					spawnIn--;
+					if (spawnIn <= 0) {
+						spawn();
+						const minGap = Math.max(48, 90 - score * 0.15);
+						spawnIn = minGap + Math.random() * 50;
+					}
+					for (const o of obstacles) o.x -= speed;
+					obstacles = obstacles.filter((o) => o.x + o.w > -10);
+
+					// collision
+					const cx = cat.x + 8;
+					const cy = cat.y + 6;
+					const cw = cat.w - 12;
+					const ch = cat.h - 8;
+					for (const o of obstacles) {
+						const oy = GROUND_Y + cat.h - o.h;
+						if (
+							cx < o.x + o.w &&
+							cx + cw > o.x &&
+							cy < oy + o.h &&
+							cy + ch > oy
+						) {
+							gameOver();
+						}
+					}
+				}
+
+				function gameOver() {
+					state = STATE.OVER;
+					if (score > best) {
+						best = Math.floor(score);
+						localStorage.setItem("nyan-best", String(best));
+					}
+				}
+
+				function drawBackground() {
+					// stars drift
+					for (const s of stars) {
+						if (state === STATE.RUNNING) {
+							s.x -= s.s * (speed * 0.4);
+							if (s.x < 0) {
+								s.x = W;
+								s.y = Math.random() * (GROUND_Y - 20);
+							}
+						}
+						ctx.globalAlpha = 0.6 + Math.sin((frame + s.x) * 0.05) * 0.3;
+						px(s.x, s.y, s.r * 2, s.r * 2, "#ffffff");
+					}
+					ctx.globalAlpha = 1;
+					// ground
+					px(0, GROUND_Y + cat.h, W, H - GROUND_Y - cat.h, "#13062e");
+					ctx.strokeStyle = "#ff4fd8";
+					ctx.lineWidth = 2;
+					ctx.beginPath();
+					ctx.moveTo(0, GROUND_Y + cat.h);
+					ctx.lineTo(W, GROUND_Y + cat.h);
+					ctx.stroke();
+				}
+
+				function drawObstacles() {
+					for (const o of obstacles) {
+						const oy = GROUND_Y + cat.h - o.h;
+						px(o.x, oy, o.w, o.h, "#28104f");
+						px(o.x, oy, o.w, 4, "#7a3cff");
+						px(o.x + o.w / 2 - 2, oy + 6, 4, o.h - 10, "#a06bff");
+					}
+				}
+
+				function drawHud() {
+					ctx.fillStyle = "#fff";
+					ctx.font = "16px 'Courier New', monospace";
+					ctx.textAlign = "right";
+					ctx.fillText("SCORE " + String(Math.floor(score)).padStart(5, "0"), W - 16, 28);
+					ctx.fillStyle = "#ffd54f";
+					ctx.fillText("BEST " + String(best).padStart(5, "0"), W - 16, 50);
+					ctx.textAlign = "left";
+				}
+
+				function drawCenterText(lines) {
+					ctx.save();
+					ctx.fillStyle = "rgba(7,2,23,0.72)";
+					ctx.fillRect(0, 0, W, H);
+					ctx.textAlign = "center";
+					ctx.fillStyle = "#fff";
+					ctx.font = "26px 'Courier New', monospace";
+					ctx.fillText(lines[0], W / 2, H / 2 - 18);
+					ctx.font = "16px 'Courier New', monospace";
+					ctx.fillStyle = "#ffd54f";
+					for (let i = 1; i < lines.length; i++) {
+						ctx.fillText(lines[i], W / 2, H / 2 + 14 + (i - 1) * 26);
+					}
+					ctx.restore();
+					ctx.textAlign = "left";
+				}
+
+				function render() {
+					ctx.clearRect(0, 0, W, H);
+					drawBackground();
+					drawRainbowTrail();
+					drawObstacles();
+					drawCat(cat.x, cat.y);
+					drawHud();
+
+					if (state === STATE.READY) {
+						drawCenterText([
+							"NYAN CAT RUN",
+							"Press Space / Tap to start",
+						]);
+					} else if (state === STATE.OVER) {
+						drawCenterText([
+							"GAME OVER",
+							"Score " + Math.floor(score) + "  |  Best " + best,
+							"Press Space / Tap to retry",
+						]);
+					}
+				}
+
+				function loop() {
+					if (state === STATE.RUNNING) update();
+					render();
+					requestAnimationFrame(loop);
+				}
+
+				loop();
+			})();
+		</script>
 	</body>
 </html>

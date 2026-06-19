@@ -1,17 +1,24 @@
-# Multiplayer Globe App
+# Nyan Cat Run
 
 [![Live GitHub card powered by kyledrake.me](https://kyledrake.me/github.svg)](https://kyledrake.me)
 
+A Nyan Cat jumping game in the style of the Chrome dino runner, served from a
+Cloudflare Worker at [kyledrake.me](https://kyledrake.me). Jump the obstacles,
+ride the rainbow, and chase your best score.
 
-This repo powers the live globe at [kyledrake.me](https://kyledrake.me), including a dynamic SVG endpoint for GitHub profile README embeds.
+## Play
+
+- **Space** / **↑** / tap or click to jump
+- Speed ramps up the longer you survive; your best score is saved locally
+
+The whole game is a self-contained canvas in [`public/index.html`](public/index.html) — no build step required to play.
 
 ## Live GitHub Profile README Integration
 
-Use this in a GitHub profile README to render the live card directly from the Cloudflare Worker:
+The Worker still exposes a dynamic SVG card for GitHub profile README embeds:
 
 ```md
 [![Live GitHub card powered by kyledrake.me](https://kyledrake.me/github.svg)](https://kyledrake.me)
-
 ```
 
 The SVG is generated at request time by `kyledrake.me/github.svg` with no-cache headers so GitHub receives fresh repo data whenever it refreshes the image.
